@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>ECData - Mapa Electoral</title>
+    <title>ECData - Mapa Electoral Perú</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
@@ -12,8 +12,9 @@
             position: absolute; top: 20px; right: 20px; z-index: 1000;
             background: white; padding: 10px; border: 1px solid #444;
             font-family: Arial, sans-serif; font-weight: bold; font-size: 22px;
+            color: #333;
         }
-        .pex-rounded { rx: 20; ry: 20; }
+        .pex-rounded { rx: 15; ry: 15; }
         .leaflet-container { background: #fff !important; }
     </style>
 </head>
@@ -45,7 +46,7 @@
             };
         }
 
-        fetch("mapa.geojson?nocache=" + Date.now())
+        fetch("mapa.geojson?v=" + Date.now())
             .then(res => res.json())
             .then(data => {
                 geoJsonLayer = L.geoJSON(data, {
@@ -73,12 +74,15 @@
                         onEachFeature: (f, l) => { l.bindPopup("<b>CALLAO (Zoom)</b>"); }
                     }).addTo(map);
                     
-                    // LÍNEA RE-AJUSTADA (Más larga para que entre al zoom)
-                    L.polyline([[-10, -82], [-11.9, -77.2]], {
-                        color: "#444", weight: 1.5, dashArray: "5, 5", opacity: 0.8
+                    // --- LÍNEA CONECTADA (RECALIBRADA) ---
+                    // Punto 1 (Zoom): [-10.5, -81.3] -> Borde del cuadro gigante
+                    // Punto 2 (Destino): [-12.05, -77.12] -> Coordenadas reales del Callao
+                    L.polyline([[-10.5, -81.3], [-12.05, -77.12]], {
+                        color: "#444", weight: 1.2, dashArray: "5, 5", opacity: 0.7
                     }).addTo(map).bringToFront();
                 }
 
+                // --- PEX (REDONDEADO) ---
                 pexLayer = L.rectangle([[-15.5, -81.5], [-13.5, -79.5]], getStyle("EXTRANJERO")).addTo(map);
                 pexLayer.bindPopup("<b>PERUANOS EN EL EXTERIOR</b>");
                 let el = pexLayer.getElement();
