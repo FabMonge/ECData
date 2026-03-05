@@ -2,45 +2,35 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa Electoral Interactivo - ECData</title>
+    <title>ECData - Mapa Electoral Pro</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background-color: #ffffff; }
-        #map { width: 100%; height: 100vh; background-color: #ffffff; }
-
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background-color: white; }
+        #map { width: 100%; height: 100vh; }
         .year-label {
             position: absolute; top: 20px; right: 20px; z-index: 1000;
-            background: white; padding: 10px 20px; border: 2px solid #ce1126;
-            font-family: Arial, sans-serif; font-size: 24px; font-weight: bold; color: #333;
+            background: white; padding: 10px; border: 2px solid black;
+            font-family: Arial; font-weight: bold; font-size: 22px;
         }
-        
-        .legend-label {
-            position: absolute; z-index: 1000; font-family: Arial, sans-serif; 
-            font-size: 11px; font-weight: bold; color: #888; text-transform: uppercase;
-        }
+        /* Estilo para redondear el cuadro del PEX vía SVG */
+        .pex-rounded { rx: 10; ry: 10; }
     </style>
 </head>
 <body>
-
     <div id="year-display" class="year-label">1ra Vuelta 2011</div>
-    <div class="legend-label" style="bottom: 45px; left: 25px;">Extranjero (PEX)</div>
-    <div class="legend-label" style="top: 28%; left: 10%;">Callao (Zoom)</div>
     <div id="map"></div>
 
     <script>
-        // 1. CONFIGURACIÓN DEL MAPA
         var map = L.map('map', {
             zoomControl: false, dragging: false, scrollWheelZoom: false,
             doubleClickZoom: false, touchZoom: false, attributionControl: false
-        }).setView([-9.5, -78], 5.2); // Ajustado para dar espacio a los insets
+        }).setView([-9.5, -77.5], 5.2);
 
-        // 2. DATOS ELECTORALES (Simulacro, puedes editarlos)
         const elecciones = {
-            "2011": { "LIMA": "#ff8c00", "CALLAO": "#ce1126", "EXTRANJERO": "#ff8c00", "CUSCO": "#ce1126" },
-            "2016": { "LIMA": "#ff8c00", "CALLAO": "#ffcc00", "EXTRANJERO": "#ffcc00", "CUSCO": "#ffcc00" },
-            "2021": { "LIMA": "#0047ab", "CALLAO": "#0047ab", "EXTRANJERO": "#0047ab", "CUSCO": "#ce1126" }
+            "2011": { "LIMA": "#ff8c00", "CALLAO": "#ce1126", "EXTRANJERO": "#ff8c00" },
+            "2016": { "LIMA": "#ff8c00", "CALLAO": "#ffcc00", "EXTRANJERO": "#ffcc00" },
+            "2021": { "LIMA": "#0047ab", "CALLAO": "#0047ab", "EXTRANJERO": "#0047ab" }
         };
 
         const periodos = ["2011", "2016", "2021"];
@@ -48,70 +38,65 @@
         let geoJsonLayer, callaoInset, pexLayer;
 
         function getStyle(name) {
-            let año = periodos[currentIndex];
+            let n = name ? name.toUpperCase().trim() : "";
+            let anio = periodos[currentIndex];
             return {
-                fillColor: elecciones[año][name] || "#eeeeee",
-                weight: 1.5, opacity: 1, color: '#ffffff', fillOpacity: 1
+                fillColor: elecciones[anio][n] || "#eeeeee",
+                weight: 1.5, 
+                opacity: 1, 
+                color: "black", // 1. BORDES NEGROS
+                fillOpacity: 1
             };
         }
 
-        // 3. CARGA DE DATOS
-        fetch('mapa.geojson')
+        fetch("mapa.geojson")
             .then(res => res.json())
             .then(data => {
-                // Mapa Principal
                 geoJsonLayer = L.geoJSON(data, {
-                    style: function(f) { return getStyle(f.properties.NOMBDEP); },
-                    onEachFeature: function(f, l) {
-                        l.bindPopup("<b>" + f.properties.NOMBDEP + "</b>");
+                    style: function(f) { return getStyle(f.properties.NOMBDEP); }
+                }).addTo(map);
+
+                // --- 2. CONFIGURACIÓN CALLAO (AGRANDADO) ---
+                let callaoF = data.features.find(f => f.properties.NOMBDEP === "CALLAO");
+                if (callaoF) {
+                    let callaoGeom = JSON.parse(JSON.stringify(callaoF.geometry));
+                    
+                    // MANIOBRAR AQUÍ: shift [X, Y], scale (tamaño)
+                    const shift = [-82.5, -9.5]; 
+                    const scale = 8; // Más grande que antes
+                    const center = [-77.12, -12.05];
+
+                    function transform(coords) {
+                        if (Array.isArray(coords[0])) return coords.map(transform);
+                        return [shift[0] + (coords[0] - center[0]) * scale, shift[1] + (coords[1] - center[1]) * scale];
                     }
-                }).addTo(map);
+                    callaoGeom.coordinates = transform(callaoGeom.coordinates);
 
-                // --- CREACIÓN DEL ZOOM DEL CALLAO ---
-                // Buscamos la geometría del Callao en tu GeoJSON
-                let callaoFeature = data.features.find(f => f.properties.NOMBDEP === "CALLAO");
-                
-                // Matriz para mover y agrandar el Callao (lo ponemos en el mar)
-                let callaoGeom = JSON.parse(JSON.stringify(callaoFeature.geometry)); // Clonar
-                const shift = [-83, -10]; // Nueva posición en el mar
-                const scale = 5; // 5 veces más grande
-                const center = [-77.12, -12.05]; // Centro real del Callao
-
-                function transform(coords) {
-                    if (Array.isArray(coords[0])) return coords.map(transform);
-                    return [
-                        shift[0] + (coords[0] - center[0]) * scale,
-                        shift[1] + (coords[1] - center[1]) * scale
-                    ];
+                    callaoInset = L.geoJSON(callaoGeom, { style: getStyle("CALLAO") }).addTo(map);
+                    
+                    // PROPIEDADES DE LA LÍNEA PUNTEADA
+                    L.polyline([[-10.8, -80.5], [-11.8, -77.2]], {
+                        color: "black", 
+                        weight: 1, 
+                        dashArray: "3, 5", // 3px línea, 5px espacio
+                        opacity: 0.5
+                    }).addTo(map);
                 }
-                callaoGeom.coordinates = transform(callaoGeom.coordinates);
 
-                callaoInset = L.geoJSON(callaoGeom, {
-                    style: getStyle("CALLAO")
-                }).addTo(map);
+                // --- 4. PERUANOS EN EL EXTERIOR (MÁS CERCA Y REDONDEADO) ---
+                // Coordenadas: [Superior Izq], [Inferior Der]. 
+                // He movido el eje X de -83 a -81.5 para acercarlo al mapa.
+                pexLayer = L.rectangle([[-15.5, -81.5], [-13.5, -79.5]], getStyle("EXTRANJERO")).addTo(map);
+                
+                // Aplicamos clase CSS para redondear
+                pexLayer.getElement().classList.add('pex-rounded');
 
-                callaoInset.bindPopup("<b>Callao (Detalle)</b>");
-
-                // --- FLECHA HACIA EL CALLAO ---
-                var arrow = L.polyline([[-11, -80.5], [-11.9, -77.2]], {
-                    color: '#ccc', weight: 2, dashArray: '5, 5'
-                }).addTo(map);
-
-                // --- EXTRANJERO (PEX) ---
-                pexLayer = L.rectangle([[-16, -83.5], [-14, -80.5]], {
-                    ...getStyle("EXTRANJERO")
-                }).addTo(map);
-                pexLayer.bindPopup("<b>Peruanos en el Exterior</b>");
-
-                // 4. ANIMACIÓN
                 setInterval(() => {
                     currentIndex = (currentIndex + 1) % periodos.length;
-                    
                     geoJsonLayer.setStyle(f => getStyle(f.properties.NOMBDEP));
-                    callaoInset.setStyle(getStyle("CALLAO"));
-                    pexLayer.setStyle(getStyle("EXTRANJERO"));
-                    
-                    document.getElementById('year-display').innerText = `1ra Vuelta ${periodos[currentIndex]}`;
+                    if (callaoInset) callaoInset.setStyle(getStyle("CALLAO"));
+                    if (pexLayer) pexLayer.setStyle(getStyle("EXTRANJERO"));
+                    document.getElementById("year-display").innerText = "1ra Vuelta " + periodos[currentIndex];
                 }, 2000);
             });
     </script>
