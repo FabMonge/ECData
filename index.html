@@ -2,23 +2,18 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>ECData - Elecciones Perú</title>
+    <title>ECData - Mapa Electoral</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        /* FONDO BLANCO Y LIMPIO */
         body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background-color: #ffffff; }
         #map { width: 100%; height: 100vh; background-color: #ffffff !important; }
-        
         .year-label {
             position: absolute; top: 20px; right: 20px; z-index: 1000;
             background: white; padding: 10px; border: 1px solid #444;
             font-family: Arial, sans-serif; font-weight: bold; font-size: 22px;
         }
-
-        /* 1. BORDES REDONDOS PARA EL PEX */
-        .pex-rounded { rx: 20; ry: 20; stroke-linejoin: round; }
-        
+        .pex-rounded { rx: 15; ry: 15; }
         .leaflet-container { background: #fff !important; }
     </style>
 </head>
@@ -46,18 +41,16 @@
             let n = name ? name.toUpperCase().trim() : "";
             return {
                 fillColor: elecciones[periodos[currentIndex]][n] || "#eeeeee",
-                weight: 0.8, // BORDES FINOS
+                weight: 0.8,
                 opacity: 1, 
                 color: "#444444", 
                 fillOpacity: 1
             };
         }
 
-        // CARGA DE DATOS
         fetch("mapa.geojson")
             .then(res => res.json())
             .then(data => {
-                // MAPA PRINCIPAL
                 geoJsonLayer = L.geoJSON(data, {
                     style: function(f) { return getStyle(f.properties.NOMBDEP); },
                     onEachFeature: function(f, l) {
@@ -66,11 +59,12 @@
                     }
                 }).addTo(map);
 
-                // --- 2. CALLAO GIGANTE (Escala 16) ---
+                // --- CALLAO AJUSTADO ---
                 let callaoF = data.features.find(f => f.properties.NOMBDEP === "CALLAO");
                 if (callaoF) {
                     let callaoGeom = JSON.parse(JSON.stringify(callaoF.geometry));
-                    const shift = [-84.5, -8.5], scale = 16, center = [-77.12, -12.05];
+                    // Escala reducida a 12 para que no sea tan invasivo
+                    const shift = [-83.5, -9.5], scale = 12, center = [-77.12, -12.05];
 
                     function transform(coords) {
                         if (Array.isArray(coords[0])) return coords.map(transform);
@@ -80,22 +74,20 @@
 
                     callaoInset = L.geoJSON(callaoGeom, { 
                         style: getStyle("CALLAO"),
-                        onEachFeature: function(f, l) { l.bindPopup("<b>CALLAO (Detalle)</b>"); }
+                        onEachFeature: function(f, l) { l.bindPopup("<b>CALLAO (Zoom)</b>"); }
                     }).addTo(map);
                     
-                    // LÍNEA CONECTADA
-                    L.polyline([[-10, -82.5], [-11.9, -77.2]], {
+                    // LÍNEA CONECTADA (Inicia en el borde del zoom)
+                    L.polyline([[-10.6, -81.2], [-11.9, -77.2]], {
                         color: "#444", weight: 1, dashArray: "4, 4", opacity: 0.5
                     }).addTo(map);
                 }
 
-                // --- 3. PEX REDONDEADO ---
                 pexLayer = L.rectangle([[-15.5, -81.5], [-13.5, -79.5]], getStyle("EXTRANJERO")).addTo(map);
                 pexLayer.bindPopup("<b>PERUANOS EN EL EXTERIOR</b>");
                 let el = pexLayer.getElement();
                 if(el) el.classList.add('pex-rounded');
 
-                // ANIMACIÓN
                 setInterval(() => {
                     currentIndex = (currentIndex + 1) % periodos.length;
                     geoJsonLayer.setStyle(f => getStyle(f.properties.NOMBDEP));
