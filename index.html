@@ -2,32 +2,46 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>ECData - Mapa Electoral Perú</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECData - Mapa Electoral Interactivo</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
+        /* 1. RESET Y FONDO BLANCO */
         body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background-color: #ffffff; }
         #map { width: 100%; height: 100vh; background-color: #ffffff !important; }
+        
+        /* 2. ETIQUETA DE AÑO (ESTILO EL COMERCIO) */
         .year-label {
             position: absolute; top: 20px; right: 20px; z-index: 1000;
             background: white; padding: 10px; border: 1px solid #444;
             font-family: Arial, sans-serif; font-weight: bold; font-size: 22px;
-            color: #333;
+            color: #333; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
         }
-        .pex-rounded { rx: 15; ry: 15; }
+
+        /* 3. BORDES REDONDOS PARA PEX */
+        .pex-rounded { rx: 15; ry: 15; stroke-linejoin: round; }
+        
+        /* LIMPIEZA DE CONTENEDORES LEAFLET */
         .leaflet-container { background: #fff !important; }
     </style>
 </head>
 <body>
+
     <div id="year-display" class="year-label">1ra Vuelta 2011</div>
     <div id="map"></div>
 
     <script>
+        // --- CONFIGURACIÓN DEL MAPA ---
         var map = L.map('map', {
             zoomControl: false, dragging: false, scrollWheelZoom: false,
             doubleClickZoom: false, touchZoom: false, attributionControl: false
         }).setView([-9.5, -78.5], 5.2);
 
+        // --- DATOS DE LAS ELECCIONES (Placeholders) ---
+        // Aquí puedes agregar todos los departamentos (AREQUIPA, PIURA, etc.)
         const elecciones = {
             "2011": { "LIMA": "#ff8c00", "CALLAO": "#ce1126", "EXTRANJERO": "#ff8c00", "CUSCO": "#ce1126" },
             "2016": { "LIMA": "#ff8c00", "CALLAO": "#ffcc00", "EXTRANJERO": "#ffcc00", "CUSCO": "#ffcc00" },
@@ -38,26 +52,37 @@
         let currentIndex = 0;
         let geoJsonLayer, callaoInset, pexLayer;
 
+        // --- ESTILO DE LAS REGIONES ---
         function getStyle(name) {
             let n = name ? name.toUpperCase().trim() : "";
+            let anio = periodos[currentIndex];
             return {
-                fillColor: elecciones[periodos[currentIndex]][n] || "#eeeeee",
-                weight: 0.8, opacity: 1, color: "#444444", fillOpacity: 1
+                fillColor: elecciones[anio][n] || "#eeeeee",
+                weight: 0.8, // BORDES FINOS
+                opacity: 1, 
+                color: "#444444", // GRIS OSCURO PROFESIONAL
+                fillOpacity: 1
             };
         }
 
-        fetch("mapa.geojson?v=" + Date.now())
+        // --- INTERACTIVIDAD ---
+        function onEachFeature(feature, layer) {
+            let nombre = feature.properties.NOMBDEP || "Región";
+            layer.bindPopup("<b>" + nombre + "</b>", { closeButton: false });
+            layer.on('click', function() { this.openPopup(); });
+        }
+
+        // --- CARGA DE DATOS (CON CACHE BUSTER) ---
+        fetch("mapa.geojson?nocache=" + Date.now())
             .then(res => res.json())
             .then(data => {
+                // 1. MAPA BASE PERÚ
                 geoJsonLayer = L.geoJSON(data, {
                     style: f => getStyle(f.properties.NOMBDEP),
-                    onEachFeature: (f, l) => {
-                        l.bindPopup("<b>" + f.properties.NOMBDEP + "</b>");
-                        l.on('click', function() { this.openPopup(); });
-                    }
+                    onEachFeature: onEachFeature
                 }).addTo(map);
 
-                // --- CALLAO ZOOM (Escala 12) ---
+                // 2. ZOOM CALLAO (ESCALA 12)
                 let callaoF = data.features.find(f => f.properties.NOMBDEP === "CALLAO");
                 if (callaoF) {
                     let callaoGeom = JSON.parse(JSON.stringify(callaoF.geometry));
@@ -74,20 +99,21 @@
                         onEachFeature: (f, l) => { l.bindPopup("<b>CALLAO (Zoom)</b>"); }
                     }).addTo(map);
                     
-                    // --- LÍNEA CONECTADA (RECALIBRADA) ---
-                    // Punto 1 (Zoom): [-10.5, -81.3] -> Borde del cuadro gigante
-                    // Punto 2 (Destino): [-12.05, -77.12] -> Coordenadas reales del Callao
-                    L.polyline([[-10.5, -81.3], [-12.05, -77.12]], {
-                        color: "#444", weight: 1.2, dashArray: "5, 5", opacity: 0.7
+                    // --- LÍNEA DE CONEXIÓN SOLDADA ---
+                    // Punto A (en el zoom): Entra un poco al área del zoom para asegurar unión
+                    // Punto B (en el mapa real): Cae justo en el Callao base
+                    L.polyline([[-10.4, -81.5], [-12.05, -77.12]], {
+                        color: "#444", weight: 1.2, dashArray: "5, 5", opacity: 0.8
                     }).addTo(map).bringToFront();
                 }
 
-                // --- PEX (REDONDEADO) ---
+                // 3. RECUADRO PEX (REDONDEADO)
                 pexLayer = L.rectangle([[-15.5, -81.5], [-13.5, -79.5]], getStyle("EXTRANJERO")).addTo(map);
                 pexLayer.bindPopup("<b>PERUANOS EN EL EXTERIOR</b>");
-                let el = pexLayer.getElement();
-                if(el) el.classList.add('pex-rounded');
+                let pexEl = pexLayer.getElement();
+                if(pexEl) pexEl.classList.add('pex-rounded');
 
+                // --- CICLO DE ANIMACIÓN ---
                 setInterval(() => {
                     currentIndex = (currentIndex + 1) % periodos.length;
                     geoJsonLayer.setStyle(f => getStyle(f.properties.NOMBDEP));
@@ -95,7 +121,8 @@
                     if (pexLayer) pexLayer.setStyle(getStyle("EXTRANJERO"));
                     document.getElementById("year-display").innerText = "1ra Vuelta " + periodos[currentIndex];
                 }, 2000);
-            });
+            })
+            .catch(err => console.error("Error al cargar el mapa:", err));
     </script>
 </body>
 </html>
