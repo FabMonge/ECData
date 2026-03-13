@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ECData - Visualización Electoral Histórica</title>
+    <title>ECData - Especial Electoral</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
@@ -11,14 +11,55 @@
 </head>
 <body>
 
-    <button id="play-pause-btn" class="ui-element">⏸ PAUSA</button>
-    <div id="year-display" class="ui-element year-label">Cargando...</div>
+    <header class="special-header">
+        <div class="kicker">
+            <img src="fotos/logo_ecdata.png" alt="Logo ECData">
+        </div>
+        <h1 class="headline">Así voto el Perú: el mapa electoral de los últimos 41 años</h1>
+        <p class="intro-text">Un recorrido visual por los resultados electorales desde 1980 hasta la actualidad. Observa cómo cambió la preferencia política, región por región, y el impacto del voto de los peruanos en el extranjero a lo largo de las décadas.</p>
+        <div class="date-published">Marzo 2026</div>
+    </header>
 
-    <div id="cand-1" class="candidate-big pos-left"></div>
-    <div id="cand-2" class="candidate-big pos-right"></div>
-    <div id="bottom-candidates" class="bottom-legend-container"></div>
+    <div class="story-text">
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+        
+        <h2>El inicio de la fragmentación</h2>
+        <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida.</p>
+    </div>
 
-    <div id="map"></div>
+    <div class="viz-container">
+        
+        <div class="controls-container ui-element">
+            <button id="restart-btn" class="control-btn" title="Volver al inicio">🔄</button>
+            <button id="prev-btn" class="control-btn" title="Elección anterior" disabled>⏮</button>
+            <button id="play-pause-btn" class="control-btn main-btn">⏸</button>
+            <button id="next-btn" class="control-btn" title="Siguiente elección" disabled>⏭</button>
+        </div>
+        
+        <div id="year-display" class="ui-element year-label">Cargando...</div>
+
+        <div id="year-note" class="year-context-note"></div>
+        <div id="cand-1" class="candidate-big pos-left"></div>
+        <div id="cand-2" class="candidate-big pos-right"></div>
+        <div id="bottom-candidates" class="bottom-legend-container"></div>
+
+        <div id="map"></div>
+    </div>
+
+    <div class="story-text">
+        <h2>El voto en el extranjero</h2>
+        <p>Phasellus volutpat, metus eget egestas mollis, lacus lacus blandit dui, id egestas quam mauris ut lacus. Suspendisse pulvinar, augue ac venenatis condimentum, sem libero volutpat nibh, nec pellentesque velit pede quis nunc. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Fusce id purus.</p>
+        
+        <p>Proin viverra, ligula sit amet ultrices semper, ligula arcu tristique sapien, a accumsan nisi mauris ac eros. In hac habitasse platea dictumst. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.</p>
+    </div>
+
+    <footer class="special-credits">
+        <h3>Créditos</h3>
+        <div class="credit-item"><strong>Producción periodística y análisis de datos:</strong> Fabrizio Monge</div>
+        <div class="credit-item"><strong>Desarrollo e Interactividad:</strong> Fabrizio Monge</div>
+        <div class="credit-item"><strong>Diseño UI/UX:</strong> [Nombre del diseñador]</div>
+        <div class="credit-item"><strong>Edición:</strong> ECData</div>
+    </footer>
 
     <script>
         const ARCHIVOS = { regiones: "Ganadores_elecciones.csv", nacion: "Resumen_eleccion_nacion.csv" };
@@ -28,16 +69,23 @@
         const map = L.map('map', {
             zoomControl: false, dragging: false, scrollWheelZoom: false,
             doubleClickZoom: false, touchZoom: false, attributionControl: false, zoomSnap: 0 
-        }).setView([-9.2, -76.5], 5.55);
+        }).setView([-8.0, -76.5], 5.55);
 
         let elecciones = {}, periodos = [], currentIndex = 0;
         let geoJsonLayer, callaoInset, pexLayer;
         let timerInterval, isPlaying = true;
 
-        const colorMapRegion = {
-            'Plomo': '#757575', 'Rosado': '#e91e63', 'Amarillo': '#fbc02d',
-            'Rojo': '#ce1126', 'Azul': '#0047ab', 'Naranja': '#ff8c00',
-            'Celeste': '#00bfff', 'Verde': '#4caf50', 'Verde claro': '#8bc34a'
+        // DICCIONARIOS DE EXCEPCIONES Y NOTAS HISTÓRICAS
+        const excepcionesLocales = {
+            "1980 - 1ra Vuelta": { "PUNO": "Roger Cáceres" },
+            "2016 - 1ra Vuelta": { "CAJAMARCA": "Gregorio Santos" },
+            "2021 - 1ra Vuelta": { "LA LIBERTAD": "César Acuña" } 
+        };
+
+        const notasHistoricas = {
+            "1980 - 1ra Vuelta": { 
+                "UCAYALI": "La región fue creada en junio de 1980, luego de esta elección, antes formaba parte de Loreto." 
+            }
         };
 
         const generarLabel = (anio, vueltaStr) => {
@@ -54,13 +102,32 @@
 
         function onEachFeature(feature, layer) {
             let n = feature?.properties?.NOMBDEP ? feature.properties.NOMBDEP.toUpperCase().trim() : "CALLAO";
-            let currentElec = elecciones[periodos[currentIndex]];
-            if (currentElec && currentElec.mapa[n]) {
-                let d = currentElec.mapa[n];
+            let anioActual = periodos[currentIndex];
+            
+            // 1. VALIDACIÓN HISTÓRICA: Reemplaza todo el popup
+            if (notasHistoricas[anioActual] && notasHistoricas[anioActual][n]) {
                 layer.bindPopup(`
                     <div class="popup-region">${n}</div>
+                    <div class="popup-historical-note">${notasHistoricas[anioActual][n]}</div>
+                `, { closeButton: false });
+                return; 
+            }
+
+            // 2. LÓGICA NORMAL Y EXCEPCIONES LOCALES
+            let currentElec = elecciones[anioActual];
+            if (currentElec && currentElec.mapa[n]) {
+                let d = currentElec.mapa[n];
+                let textoLocalHtml = "";
+                
+                if (excepcionesLocales[anioActual] && excepcionesLocales[anioActual][n]) {
+                    textoLocalHtml = `<div class="popup-local-winner">${excepcionesLocales[anioActual][n]}</div>`;
+                }
+
+                layer.bindPopup(`
+                    <div class="popup-region">${n}</div>
+                    ${textoLocalHtml}
                     <div class="popup-party">${d.partido}</div>
-                    <div class="popup-pct">${d.pct} <span class="popup-pct-label">(votos emitidos)</span></div>
+                    <div class="popup-pct">${d.pct} <span class="popup-pct-label">(votos válidos)</span></div>
                 `, { closeButton: false });
             }
         }
@@ -69,13 +136,15 @@
             if (!cand || !cand.nombre) return '';
             const bgImage = `background-image: url('fotos/${cand.idFoto}_${anio}.png'), url('fotos/${cand.idFoto}.png'); background-size: cover; background-position: center center;`;
 
+            const dotHtml = cand.color ? `<div class="dot" style="background:${cand.color};"></div>` : '';
+
             return `
                 <div class="photo" style="${bgImage}"></div>
                 <div class="cand-info-container">
                     <span class="cand-name">${cand.nombre}</span>
                     <span class="cand-party">${cand.partido}</span>
                     <div class="cand-pct">
-                        <div class="dot" style="background:${cand.color};"></div>
+                        ${dotHtml}
                         <span>${cand.pct}</span>
                     </div>
                 </div>
@@ -104,6 +173,7 @@
         ]).then(results => {
             const [regionesData, nacionData] = results;
 
+            // NACIÓN
             nacionData.data.forEach(row => {
                 const anio = row['año'] || row['ano'] || Object.values(row)[0];
                 const puestoRaw = (row['puesto'] || "").toUpperCase().trim();
@@ -120,12 +190,13 @@
                         nombre: row['candidato'].trim(), 
                         partido: (row['organización política'] || row['organizacion politica'] || "").trim(), 
                         pct: row['%_votos_validos'] || "", 
-                        color: colorMapRegion[(row['color asociado (recomendación)'] || row['color asociado'] || "").trim()] || "#999999",
+                        color: (row['color'] || "").trim(),
                         idFoto: nombreLimpio
                     };
                 }
             });
 
+            // REGIONES
             regionesData.data.forEach(row => {
                 const anio = row['año'] || row['ano'] || Object.values(row)[0];
                 let region = row["distrito electoral"];
@@ -137,8 +208,10 @@
                 region = region.toUpperCase().trim();
                 if (region.includes("EXTRANJERO")) region = "EXTRANJERO";
 
+                const colorRegion = (row['color'] || "").trim() || COLOR_DEFECTO;
+
                 elecciones[label].mapa[region] = { 
-                    color: colorMapRegion[(row["color asociado (recomendación)"] || row["color asociado"] || "").trim()] || COLOR_DEFECTO, 
+                    color: colorRegion, 
                     partido: (row["organización política"] || row["organizacion politica"] || "").trim(), 
                     pct: row["%_votos_validos"] || "" 
                 };
@@ -164,7 +237,7 @@
                 
                 pexLayer.on('click', () => {
                     let d = elecciones[periodos[currentIndex]]?.mapa["EXTRANJERO"];
-                    if (d) L.popup().setLatLng([-14.2, -81.5]).setContent(`<div class="popup-region">EXTRANJERO</div><div class="popup-party">${d.partido}</div><div class="popup-pct">${d.pct} <span class="popup-pct-label">(votos emitidos)</span></div>`).openOn(map);
+                    if (d) L.popup().setLatLng([-14.2, -81.5]).setContent(`<div class="popup-region">EXTRANJERO</div><div class="popup-party">${d.partido}</div><div class="popup-pct">${d.pct} <span class="popup-pct-label">(votos válidos)</span></div>`).openOn(map);
                 });
 
                 actualizarPantalla();
@@ -181,7 +254,6 @@
                 callaoInset.eachLayer(layer => onEachFeature(layer.feature, layer));
             }
             
-            // Lógica blindada para el mundo: Pinta si hay ganador, lo vuelve transparente si no hay data.
             let globe = pexLayer?.getElement()?.querySelector('.pex-globe');
             if (globe) {
                 let currentElec = elecciones[periodos[currentIndex]];
@@ -190,13 +262,68 @@
             }
 
             updateLegend();
+
+            // LÓGICA PARA EL TEXTO DE CONTEXTO DEL AÑO 2000
+            const noteContainer = document.getElementById("year-note");
+            // Si el año actual incluye "2000" (funciona para 1ra y 2da vuelta)
+            if (periodos[currentIndex].includes("2000")) {
+                noteContainer.innerHTML = "<strong>Contexto Histórico</strong>Las elecciones generales del año 2000, que culminaron en la re-reelección de Alberto Fujimori, recibieron serios señalamientos de fraude por parte de organismos internacionales.";
+                noteContainer.style.display = "block";
+            } else {
+                noteContainer.style.display = "none";
+            }
         }
 
-        function avanzarFrame() { currentIndex = (currentIndex + 1) % periodos.length; actualizarPantalla(); }
-        function iniciarAnimacion() { timerInterval = setInterval(avanzarFrame, VELOCIDAD_ANIMACION); isPlaying = true; document.getElementById("play-pause-btn").innerText = "⏸ PAUSA"; }
-        function pausarAnimacion() { clearInterval(timerInterval); isPlaying = false; document.getElementById("play-pause-btn").innerText = "▶ REPRODUCIR"; }
-        
-        document.getElementById("play-pause-btn").addEventListener("click", () => isPlaying ? pausarAnimacion() : iniciarAnimacion());
+        // ===============================================
+        // LÓGICA DE BOTONERA
+        // ===============================================
+        const btnPlayPause = document.getElementById("play-pause-btn");
+        const btnPrev = document.getElementById("prev-btn");
+        const btnNext = document.getElementById("next-btn");
+        const btnRestart = document.getElementById("restart-btn");
+
+        function avanzarFrame() { 
+            currentIndex = (currentIndex + 1) % periodos.length; 
+            actualizarPantalla(); 
+        }
+
+        function retrocederFrame() {
+            currentIndex = (currentIndex - 1 + periodos.length) % periodos.length;
+            actualizarPantalla();
+        }
+
+        function iniciarAnimacion() { 
+            timerInterval = setInterval(avanzarFrame, VELOCIDAD_ANIMACION); 
+            isPlaying = true; 
+            btnPlayPause.innerHTML = "⏸"; 
+            
+            btnPrev.disabled = true;
+            btnNext.disabled = true;
+        }
+
+        function pausarAnimacion() { 
+            clearInterval(timerInterval); 
+            isPlaying = false; 
+            btnPlayPause.innerHTML = "▶"; 
+            
+            btnPrev.disabled = false;
+            btnNext.disabled = false;
+        }
+
+        btnPlayPause.addEventListener("click", () => isPlaying ? pausarAnimacion() : iniciarAnimacion());
+        btnNext.addEventListener("click", () => { if (!isPlaying) avanzarFrame(); });
+        btnPrev.addEventListener("click", () => { if (!isPlaying) retrocederFrame(); });
+
+        btnRestart.addEventListener("click", () => {
+            currentIndex = 0; 
+            actualizarPantalla();
+            if (!isPlaying) {
+                iniciarAnimacion();
+            } else {
+                clearInterval(timerInterval);
+                timerInterval = setInterval(avanzarFrame, VELOCIDAD_ANIMACION);
+            }
+        });
     </script>
 </body>
 </html>
