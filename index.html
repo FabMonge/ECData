@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -15,7 +16,7 @@
         <div class="kicker">
             <img src="fotos/logo_ecdata.png" alt="Logo ECData">
         </div>
-        <h1 class="headline">Así voto el Perú: el mapa electoral de los últimos 41 años</h1>
+        <h1 class="headline">Así votó el Perú: el mapa electoral de los últimos 41 años</h1>
         <p class="intro-text">Un recorrido visual por los resultados electorales desde 1980 hasta la actualidad. Observa cómo cambió la preferencia política, región por región, y el impacto del voto de los peruanos en el extranjero a lo largo de las décadas.</p>
         <div class="date-published">Marzo 2026</div>
     </header>
@@ -28,7 +29,6 @@
     </div>
 
     <div class="viz-container">
-        
         <div class="controls-container ui-element">
             <button id="restart-btn" class="control-btn" title="Volver al inicio">🔄</button>
             <button id="prev-btn" class="control-btn" title="Elección anterior" disabled>⏮</button>
@@ -37,12 +37,10 @@
         </div>
         
         <div id="year-display" class="ui-element year-label">Cargando...</div>
-
         <div id="year-note" class="year-context-note"></div>
         <div id="cand-1" class="candidate-big pos-left"></div>
         <div id="cand-2" class="candidate-big pos-right"></div>
         <div id="bottom-candidates" class="bottom-legend-container"></div>
-
         <div id="map"></div>
     </div>
 
@@ -50,7 +48,56 @@
         <h2>El voto en el extranjero</h2>
         <p>Phasellus volutpat, metus eget egestas mollis, lacus lacus blandit dui, id egestas quam mauris ut lacus. Suspendisse pulvinar, augue ac venenatis condimentum, sem libero volutpat nibh, nec pellentesque velit pede quis nunc. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Fusce id purus.</p>
         
-        <p>Proin viverra, ligula sit amet ultrices semper, ligula arcu tristique sapien, a accumsan nisi mauris ac eros. In hac habitasse platea dictumst. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.</p>
+        <p>Proin viverra, ligula sit amet ultrices semper, ligula arcu tristique sapien, a accumsan nisi mauris ac eros. In hac habitasse platea dictumst. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.</p>
+    </div>
+
+    <div class="story-text" style="margin-top: 60px;">
+        <h2>El estallido del padrón y la concentración del voto</h2>
+        <p>En las últimas cuatro décadas, el electorado peruano se cuadruplicó. Mientras que el peso relativo de las regiones tuvo ligeras variaciones, en números absolutos la concentración en la capital alcanzó niveles históricos. En el siguiente mapa, el tamaño de cada región refleja su cantidad real de votantes en 2021.</p>
+    </div>
+
+    <div class="combo-visual-container">
+        <div class="columna-mitad">
+            <h3 class="anio-titulo">El peso real hoy (2021)</h3>
+            <div id="mapa-impacto" class="mapa-impacto-box"></div>
+        </div>
+        
+        <div class="columna-leyenda" id="leyenda-compartida">
+            </div>
+        
+        <div class="columna-mitad">
+            <h3 class="anio-titulo">Electores absolutos (1980 - 2021)</h3>
+            <div class="grafico-wrapper">
+                <canvas id="grafico-areas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="story-text" style="margin-top: 80px;">
+        <h2>El ausentismo y la participación ciudadana</h2>
+        <p>Desliza la línea de tiempo para observar cómo ha variado el nivel de participación electoral en cada región. Las zonas con colores más oscuros representan una mayor asistencia a las urnas.</p>
+    </div>
+
+    <div class="participacion-wrapper">
+        <div class="slider-container">
+            <div class="slider-header">
+                <span id="fase3-year-display" class="fase3-title">Cargando...</span>
+            </div>
+            <input type="range" id="slider-fase3" min="0" max="16" value="16" class="custom-slider">
+        </div>
+
+        <div class="combo-visual-container" style="margin-top: 10px;">
+            <div class="columna-mitad">
+                <div id="mapa-fase3" class="mapa-impacto-box"></div>
+            </div>
+            
+            <div class="columna-mitad">
+                <h3 class="anio-titulo" style="font-size: 16px;">Participación Nacional Histórica</h3>
+                <div class="grafico-wrapper">
+                    <canvas id="grafico-barras-fase3"></canvas>
+                </div>
+            </div>
+        </div>
     </div>
 
     <footer class="special-credits">
@@ -61,269 +108,6 @@
         <div class="credit-item"><strong>Edición General:</strong> Ariana Lira</div>
     </footer>
 
-    <script>
-        const ARCHIVOS = { regiones: "Ganadores_elecciones.csv", nacion: "Resumen_eleccion_nacion.csv" };
-        const VELOCIDAD_ANIMACION = 3000; 
-        const COLOR_DEFECTO = "#eeeeee";
-
-        const map = L.map('map', {
-            zoomControl: false, dragging: false, scrollWheelZoom: false,
-            doubleClickZoom: false, touchZoom: false, attributionControl: false, zoomSnap: 0 
-        }).setView([-8.0, -76.5], 5.55);
-
-        let elecciones = {}, periodos = [], currentIndex = 0;
-        let geoJsonLayer, callaoInset, pexLayer;
-        let timerInterval, isPlaying = true;
-
-        // DICCIONARIOS DE EXCEPCIONES Y NOTAS HISTÓRICAS
-        const excepcionesLocales = {
-            "1980 - 1ra Vuelta": { "PUNO": "Roger Cáceres" },
-            "2016 - 1ra Vuelta": { "CAJAMARCA": "Gregorio Santos" },
-            "2021 - 1ra Vuelta": { "LA LIBERTAD": "César Acuña" } 
-        };
-
-        const notasHistoricas = {
-            "1980 - 1ra Vuelta": { 
-                "UCAYALI": "La región fue creada en junio de 1980, luego de esta elección, antes formaba parte de Loreto." 
-            }
-        };
-
-        const generarLabel = (anio, vueltaStr) => {
-            const tipoVuelta = String(vueltaStr).toLowerCase().includes('prim') ? '1ra Vuelta' : '2da Vuelta';
-            return `${String(anio).trim()} - ${tipoVuelta}`;
-        };
-
-        const getStyle = (name) => {
-            const n = name ? name.toUpperCase().trim() : "";
-            const elec = elecciones[periodos[currentIndex]];
-            const fillColor = (elec && elec.mapa[n]) ? elec.mapa[n].color : COLOR_DEFECTO;
-            return { fillColor: fillColor, weight: 0.8, opacity: 1, color: "#444444", fillOpacity: 1 };
-        };
-
-        function onEachFeature(feature, layer) {
-            let n = feature?.properties?.NOMBDEP ? feature.properties.NOMBDEP.toUpperCase().trim() : "CALLAO";
-            let anioActual = periodos[currentIndex];
-            
-            // 1. VALIDACIÓN HISTÓRICA: Reemplaza todo el popup
-            if (notasHistoricas[anioActual] && notasHistoricas[anioActual][n]) {
-                layer.bindPopup(`
-                    <div class="popup-region">${n}</div>
-                    <div class="popup-historical-note">${notasHistoricas[anioActual][n]}</div>
-                `, { closeButton: false });
-                return; 
-            }
-
-            // 2. LÓGICA NORMAL Y EXCEPCIONES LOCALES
-            let currentElec = elecciones[anioActual];
-            if (currentElec && currentElec.mapa[n]) {
-                let d = currentElec.mapa[n];
-                let textoLocalHtml = "";
-                
-                if (excepcionesLocales[anioActual] && excepcionesLocales[anioActual][n]) {
-                    textoLocalHtml = `<div class="popup-local-winner">${excepcionesLocales[anioActual][n]}</div>`;
-                }
-
-                layer.bindPopup(`
-                    <div class="popup-region">${n}</div>
-                    ${textoLocalHtml}
-                    <div class="popup-party">${d.partido}</div>
-                    <div class="popup-pct">${d.pct} <span class="popup-pct-label">(votos válidos)</span></div>
-                `, { closeButton: false });
-            }
-        }
-
-        function createCard(cand, anio) {
-            if (!cand || !cand.nombre) return '';
-            const bgImage = `background-image: url('fotos/${cand.idFoto}_${anio}.png'), url('fotos/${cand.idFoto}.png'); background-size: cover; background-position: center center;`;
-
-            const dotHtml = cand.color ? `<div class="dot" style="background:${cand.color};"></div>` : '';
-
-            return `
-                <div class="photo" style="${bgImage}"></div>
-                <div class="cand-info-container">
-                    <span class="cand-name">${cand.nombre}</span>
-                    <span class="cand-party">${cand.partido}</span>
-                    <div class="cand-pct">
-                        ${dotHtml}
-                        <span>${cand.pct}</span>
-                    </div>
-                </div>
-            `;
-        }
-
-        function updateLegend() {
-            const currentData = elecciones[periodos[currentIndex]];
-            if (!currentData) return;
-            
-            const anioActual = periodos[currentIndex].split(' - ')[0];
-            
-            document.getElementById("cand-1").innerHTML = currentData.candidatos[0] ? createCard(currentData.candidatos[0], anioActual) : '';
-            document.getElementById("cand-2").innerHTML = currentData.candidatos[1] ? createCard(currentData.candidatos[1], anioActual) : '';
-            
-            const bottom = document.getElementById("bottom-candidates");
-            bottom.innerHTML = currentData.candidatos.slice(2).reduce((html, cand) => {
-                if (!cand) return html;
-                return html + `<div class="candidate-small">${createCard(cand, anioActual)}</div>`;
-            }, "");
-        }
-
-        Promise.all([
-            new Promise(res => Papa.parse(ARCHIVOS.regiones, { download: true, header: true, skipEmptyLines: true, delimiter: ";", transformHeader: h => h.replace(/^\uFEFF/, '').trim().toLowerCase(), complete: res })),
-            new Promise(res => Papa.parse(ARCHIVOS.nacion, { download: true, header: true, skipEmptyLines: true, delimiter: ";", transformHeader: h => h.replace(/^\uFEFF/, '').trim().toLowerCase(), complete: res }))
-        ]).then(results => {
-            const [regionesData, nacionData] = results;
-
-            // NACIÓN
-            nacionData.data.forEach(row => {
-                const anio = row['año'] || row['ano'] || Object.values(row)[0];
-                const puestoRaw = (row['puesto'] || "").toUpperCase().trim();
-                if (!anio || !row['vuelta'] || !row['candidato'] || !puestoRaw) return; 
-
-                const label = generarLabel(anio, row['vuelta']);
-                if (!elecciones[label]) elecciones[label] = { mapa: {}, candidatos: [] };
-
-                const nombreLimpio = row['candidato'].trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\./g, '').replace(/\s+/g, '_');
-
-                const idx = ['PRIMERO', 'SEGUNDO', 'TERCERO', 'CUARTO'].indexOf(puestoRaw);
-                if (idx !== -1) {
-                    elecciones[label].candidatos[idx] = { 
-                        nombre: row['candidato'].trim(), 
-                        partido: (row['organización política'] || row['organizacion politica'] || "").trim(), 
-                        pct: row['%_votos_validos'] || "", 
-                        color: (row['color'] || "").trim(),
-                        idFoto: nombreLimpio
-                    };
-                }
-            });
-
-            // REGIONES
-            regionesData.data.forEach(row => {
-                const anio = row['año'] || row['ano'] || Object.values(row)[0];
-                let region = row["distrito electoral"];
-                if (!anio || !row['vuelta'] || !region) return; 
-
-                const label = generarLabel(anio, row['vuelta']);
-                if (!elecciones[label]) elecciones[label] = { mapa: {}, candidatos: [] };
-                
-                region = region.toUpperCase().trim();
-                if (region.includes("EXTRANJERO")) region = "EXTRANJERO";
-
-                const colorRegion = (row['color'] || "").trim() || COLOR_DEFECTO;
-
-                elecciones[label].mapa[region] = { 
-                    color: colorRegion, 
-                    partido: (row["organización política"] || row["organizacion politica"] || "").trim(), 
-                    pct: row["%_votos_validos"] || "" 
-                };
-            });
-
-            periodos = Object.keys(elecciones).sort();
-            if (periodos.length === 0) return document.getElementById("year-display").innerText = "Error CSV";
-
-            fetch("mapa.geojson?v=" + Date.now()).then(res => res.json()).then(data => {
-                geoJsonLayer = L.geoJSON(data, { style: f => getStyle(f.properties.NOMBDEP), onEachFeature: onEachFeature }).addTo(map);
-
-                const callaoF = data.features.find(f => f.properties.NOMBDEP === "CALLAO");
-                if (callaoF) {
-                    let callaoGeom = JSON.parse(JSON.stringify(callaoF.geometry));
-                    const shift = [-82.5, -11.5], scale = 12, center = [-77.12, -12.05];
-                    callaoGeom.coordinates = (function transform(coords) { return Array.isArray(coords[0]) ? coords.map(transform) : [shift[0] + (coords[0] - center[0]) * scale, shift[1] + (coords[1] - center[1]) * scale]; })(callaoGeom.coordinates);
-                    callaoInset = L.geoJSON(callaoGeom, { style: getStyle("CALLAO"), onEachFeature: onEachFeature }).addTo(map);
-                    L.polyline([[-10.8, -82.2], [-12.05, -77.50]], { color: "#444", weight: 1.2, dashArray: "5, 5" }).addTo(map);
-                    L.marker([-8.5, -82.75], { icon: L.divIcon({ className: 'pex-label', html: 'CALLAO', iconSize: [100, 20], iconAnchor: [50, 10] }), interactive: false }).addTo(map);
-                }
-
-                pexLayer = L.marker([-15.5, -81.5], { icon: L.divIcon({ className: 'pex-globe-container', html: '<div class="pex-globe"></div><div class="pex-label">Peruanos en<br>el extranjero</div>', iconSize: [120, 100], iconAnchor: [60, 50] }) }).addTo(map);
-                
-                pexLayer.on('click', () => {
-                    let d = elecciones[periodos[currentIndex]]?.mapa["EXTRANJERO"];
-                    if (d) L.popup().setLatLng([-14.2, -81.5]).setContent(`<div class="popup-region">EXTRANJERO</div><div class="popup-party">${d.partido}</div><div class="popup-pct">${d.pct} <span class="popup-pct-label">(votos válidos)</span></div>`).openOn(map);
-                });
-
-                actualizarPantalla();
-                iniciarAnimacion();
-            });
-        });
-
-        function actualizarPantalla() {
-            document.getElementById("year-display").innerText = periodos[currentIndex];
-            geoJsonLayer.setStyle(layerFeature => getStyle(layerFeature.properties.NOMBDEP));
-            geoJsonLayer.eachLayer(layer => onEachFeature(layer.feature, layer));
-            if (callaoInset) {
-                callaoInset.setStyle(getStyle("CALLAO"));
-                callaoInset.eachLayer(layer => onEachFeature(layer.feature, layer));
-            }
-            
-            let globe = pexLayer?.getElement()?.querySelector('.pex-globe');
-            if (globe) {
-                let currentElec = elecciones[periodos[currentIndex]];
-                let d = currentElec ? currentElec.mapa["EXTRANJERO"] : null;
-                globe.style.backgroundColor = (d && d.color && d.color !== COLOR_DEFECTO) ? d.color : 'transparent';
-            }
-
-            updateLegend();
-
-            // LÓGICA PARA EL TEXTO DE CONTEXTO DEL AÑO 2000
-            const noteContainer = document.getElementById("year-note");
-            // Si el año actual incluye "2000" (funciona para 1ra y 2da vuelta)
-            if (periodos[currentIndex].includes("2000")) {
-                noteContainer.innerHTML = "<strong>Contexto Histórico</strong>Las elecciones generales del año 2000, que culminaron en la re-reelección de Alberto Fujimori, recibieron serios señalamientos de fraude por parte de organismos internacionales.";
-                noteContainer.style.display = "block";
-            } else {
-                noteContainer.style.display = "none";
-            }
-        }
-
-        // ===============================================
-        // LÓGICA DE BOTONERA
-        // ===============================================
-        const btnPlayPause = document.getElementById("play-pause-btn");
-        const btnPrev = document.getElementById("prev-btn");
-        const btnNext = document.getElementById("next-btn");
-        const btnRestart = document.getElementById("restart-btn");
-
-        function avanzarFrame() { 
-            currentIndex = (currentIndex + 1) % periodos.length; 
-            actualizarPantalla(); 
-        }
-
-        function retrocederFrame() {
-            currentIndex = (currentIndex - 1 + periodos.length) % periodos.length;
-            actualizarPantalla();
-        }
-
-        function iniciarAnimacion() { 
-            timerInterval = setInterval(avanzarFrame, VELOCIDAD_ANIMACION); 
-            isPlaying = true; 
-            btnPlayPause.innerHTML = "⏸"; 
-            
-            btnPrev.disabled = true;
-            btnNext.disabled = true;
-        }
-
-        function pausarAnimacion() { 
-            clearInterval(timerInterval); 
-            isPlaying = false; 
-            btnPlayPause.innerHTML = "▶"; 
-            
-            btnPrev.disabled = false;
-            btnNext.disabled = false;
-        }
-
-        btnPlayPause.addEventListener("click", () => isPlaying ? pausarAnimacion() : iniciarAnimacion());
-        btnNext.addEventListener("click", () => { if (!isPlaying) avanzarFrame(); });
-        btnPrev.addEventListener("click", () => { if (!isPlaying) retrocederFrame(); });
-
-        btnRestart.addEventListener("click", () => {
-            currentIndex = 0; 
-            actualizarPantalla();
-            if (!isPlaying) {
-                iniciarAnimacion();
-            } else {
-                clearInterval(timerInterval);
-                timerInterval = setInterval(avanzarFrame, VELOCIDAD_ANIMACION);
-            }
-        });
-    </script>
+    <script src="app.js" defer></script>
 </body>
 </html>
