@@ -402,8 +402,8 @@ body, html {
     
     /* Fase 1: Mapa Principal - AUMENTAMOS LA ALTURA A 700px */
     .viz-container { 
-        height: 500px; 
-        min-height: 500px; 
+        height: 620px; 
+        min-height: 620px; 
         margin: 20px 0 30px 0;
     }
     
@@ -425,7 +425,7 @@ body, html {
     }
 
     /* Achicamos las tarjetas de los candidatos top 2 */
-    .candidate-big { width: 110px; top: auto; bottom: 55px; transform: translateY(0); }
+    .candidate-big { width: 110px; top: auto; bottom: 80px; transform: translateY(0); }
     .pos-left { left: 0%; } 
     .pos-right { right: 0%; }
     .candidate-big .photo { width: 65px; height: 65px; margin-bottom: 5px; }
@@ -443,8 +443,8 @@ body, html {
 
     /* Achicamos y centramos los candidatos 3 y 4 */
     .bottom-legend-container { 
-        gap: 20px; 
-        bottom: 10px; /* Los subimos un poco para dejar la base libre para la fuente */
+        gap: 10px; 
+        bottom: 35px; /* Los subimos un poco para dejar la base libre para la fuente */
         width: 100%; 
         flex-wrap: nowrap; 
         justify-content: center; 
@@ -465,7 +465,7 @@ body, html {
     
     /* Fuente al final de todo y centrada */
     .source-fase1 { 
-        bottom: -5px; /* Pegada al ras del piso del contenedor */
+        bottom: 100px; /* Pegada al ras del piso del contenedor */
         left: 50%;
         transform: translateX(-50%);
         font-size: 9px; 
@@ -483,13 +483,13 @@ body, html {
         /* Ya no necesitamos forzar esto por CSS */
     }
     .pex-globe {
-        width: 35px !important;
-        height: 35px !important;
+        width: 45px !important;
+        height: 45px !important;
         border-width: 1px;
         margin-bottom: 2px;
     }
     .pex-label {
-        font-size: 8px !important;
+        font-size: 9px !important;
         line-height: 1.1;
         letter-spacing: 0px;
     }
@@ -697,18 +697,31 @@ path.leaflet-interactive {
 }
 
 @media (max-width: 850px) {
+    /* 1. Bloqueamos el scroll horizontal en toda la página SOLO en móviles */
+    body, html {
+        overflow-x: hidden; 
+    }
+
     #mapa-fase3 {
-        height: 350px; /* Mapa más bajo en celular */
+        height: 350px; 
         margin-bottom: 20px;
     }
+    
+    /* 2. Ajustamos la caja del slider SOLO en móviles */
     .slider-container {
         padding: 0 10px;
+        box-sizing: border-box; 
     }
+    
+    /* 3. Acortamos la barra SOLO en móviles para que la bolita no choque */
+    .custom-slider {
+        width: 95%; 
+    }
+    
     .fase3-title {
-        font-size: 20px; /* Título del año más chico */
+        font-size: 20px; 
     }
 }
-
 
 
 /* =========================================
