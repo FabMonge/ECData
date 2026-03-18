@@ -132,6 +132,38 @@ body, html {
     margin-bottom: 20px;
 }
 
+/* Contenedor de la imagen: un poco más ancho que el texto para que destaque */
+.story-image-container {
+    margin: 50px auto; 
+    max-width: 900px; /* Rompe un poco el ancho de 700px del texto para darle impacto */
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
+/* La imagen en sí: siempre responsiva */
+.story-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 4px; /* Un toque sutil para suavizar las esquinas */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05); /* Sombra muy ligera para separarla del fondo */
+}
+
+/* Leyenda de la foto */
+.story-image-caption {
+    font-family: 'Arial', sans-serif;
+    font-size: 13px;
+    color: #777;
+    margin-top: 12px;
+    line-height: 1.4;
+    text-align: left;
+    border-bottom: 1px solid #eaeaea;
+    padding-bottom: 10px;
+}
+
+
+
+
 /* =========================================
    4. CONTENEDOR DEL INTERACTIVO (FASE 1)
    ========================================= */
@@ -479,9 +511,6 @@ body, html {
     }
 
     /* Ajustes para el mundito (Extranjero) en celular */
-    .pex-globe-container {
-        /* Ya no necesitamos forzar esto por CSS */
-    }
     .pex-globe {
         width: 45px !important;
         height: 45px !important;
