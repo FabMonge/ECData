@@ -12,7 +12,7 @@ const map = L.map('map', {
     zoomControl: false, dragging: false, scrollWheelZoom: false,
     doubleClickZoom: false, touchZoom: false, attributionControl: false, zoomSnap: 0 
 }).setView(
-    esMovil ? [-12.0, -75.0] : [-8.0, -76.5], // Coordenadas (Móvil vs Desktop)
+    esMovil ? [-12.0, -75.0] : [-10.0, -76.5], // Coordenadas (Móvil vs Desktop)
     esMovil ? 4.4 : 5.55                     // Zoom (Móvil vs Desktop)
 );
 
@@ -170,8 +170,8 @@ Promise.all([
         }
 
         // Le damos coordenadas distintas si es móvil o si es PC
-        const coordMundito = esMovil ? [-17.5, -81.5] : [-15.5, -81.5]; // Más al sur en celular (-19.5)
-        const coordPopupMundito = esMovil ? [-18.2, -81.5] : [-14.2, -81.5];
+        const coordMundito = esMovil ? [-17.5, -81.5] : [-16.0, -81.5]; // Más al sur en celular (-19.5)
+        const coordPopupMundito = esMovil ? [-18.2, -81.5] : [-14.7, -81.5];
 
         pexLayer = L.marker(coordMundito, { icon: L.divIcon({ className: 'pex-globe-container', html: '<div class="pex-globe"></div><div class="pex-label">Peruanos en<br>el extranjero</div>', iconSize: [120, 100], iconAnchor: [60, 50] }) }).addTo(map);
         
@@ -198,16 +198,27 @@ function actualizarPantalla() {
     if (globe) {
         let currentElec = elecciones[periodos[currentIndex]];
         let d = currentElec ? currentElec.mapa["EXTRANJERO"] : null;
-        globe.style.backgroundColor = (d && d.color && d.color !== COLOR_DEFECTO) ? d.color : 'transparent';
+        let colorFondo = (d && d.color && d.color !== COLOR_DEFECTO) ? d.color : 'transparent';
+
+        // TRUCO DE INVERSIÓN PARA 1980 (Candidato de color negro)
+        if (periodos[currentIndex].includes("1980")) {
+            globe.style.backgroundColor = "#ffffff"; // Le damos fondo blanco...
+            globe.style.filter = "invert(1)";
+        } else {
+            globe.style.backgroundColor = colorFondo; // Color normal para el resto de años
+            globe.style.filter = "none";              // Sin inversión
+        }
     }
 
     updateLegend();
 
-    // NUEVA LÓGICA PARA EL CONTEXTO HISTÓRICO
+// NUEVA LÓGICA PARA EL CONTEXTO HISTÓRICO Y NOTA DEL EDITOR
     const noteContainer = document.getElementById("year-note");
+    const editorNoteContainer = document.getElementById("editor-note");
+
     if (periodos[currentIndex].includes("2000")) {
         if (esMovil) {
-            // Diseño colapsable para celulares
+            // DISEÑO CELULARES: Se mantiene el Pop-up y se apaga la nota del pie
             noteContainer.innerHTML = `
                 <div id="btn-contexto-movil" style="cursor:pointer; font-weight:900; color:#111; text-align:center;">
                     Mostrar contexto histórico 
@@ -217,6 +228,7 @@ function actualizarPantalla() {
                 </div>
             `;
             noteContainer.style.display = "block";
+            if (editorNoteContainer) editorNoteContainer.style.display = "none";
             
             // Lógica para abrir/cerrar al tocar
             document.getElementById("btn-contexto-movil").addEventListener("click", function() {
@@ -230,15 +242,19 @@ function actualizarPantalla() {
                 }
             });
         } else {
-            // Diseño normal para PC
-            noteContainer.innerHTML = "<strong>Contexto Histórico</strong>Las elecciones generales del año 2000, que culminaron en la re-reelección de Alberto Fujimori, recibieron serios señalamientos de fraude por parte de organismos internacionales.";
-            noteContainer.style.display = "block";
+            // DISEÑO PC: Apaga la caja flotante y enciende la Nota del Editor abajo
+            noteContainer.style.display = "none";
+            if (editorNoteContainer) {
+                editorNoteContainer.innerHTML = "<strong>Nota del editor:</strong> Las elecciones generales del año 2000, que culminaron en la re-reelección de Alberto Fujimori, recibieron serios señalamientos de fraude por parte de organismos internacionales.";
+                editorNoteContainer.style.display = "block";
+            }
         }
     } else {
+        // SI NO ES EL AÑO 2000: Oculta ambos contenedores
         noteContainer.style.display = "none";
+        if (editorNoteContainer) editorNoteContainer.style.display = "none";
     }
 }
-
 const btnPlayPause = document.getElementById("play-pause-btn");
 const btnPrev = document.getElementById("prev-btn");
 const btnNext = document.getElementById("next-btn");
@@ -518,7 +534,7 @@ const mapaFase3 = L.map('mapa-fase3', {
     zoomControl: false, dragging: false, scrollWheelZoom: false,
     doubleClickZoom: false, touchZoom: false, attributionControl: false, zoomSnap: 0
 }).setView(
-    esMovil ? [-9.0, -75.0] : [-8.0, -76.5], // Coordenadas (Móvil vs Desktop)
+    esMovil ? [-9.0, -75.0] : [-11.0, -76.5], // Coordenadas (Móvil vs Desktop)
     esMovil ? 4.3 : 4.8                      // Zoom (Móvil vs Desktop)
 );
 
